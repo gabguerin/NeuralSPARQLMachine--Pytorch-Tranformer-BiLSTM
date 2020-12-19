@@ -1,10 +1,12 @@
-from NSpM.Generator import Generator
-from NSpM.Learner import Learner
-from models.seq_to_seq_bilstm import BiLSTM
+import warnings
+#warnings.filterwarnings("ignore")
+from nspm.Generator import Generator
+from nspm.Learner import Learner
 import pandas as pd
 import torch
 from torch import optim
-import torch.nn as nn
+from models.seq_to_seq_bilstm import BiLSTM
+from utils import load_checkpoint, save_checkpoint, query_prediction
 
 
 lcquad_train = pd.read_json("data/LC-QuAD2.0/dataset/train.json")[["question","sparql_wikidata"]]
@@ -26,54 +28,75 @@ generator.generate_train_test_files(train_filename, test_filename)
 
 
 """
-    Build the Learner to get the input and target vocabs
-"""
-learner = Learner(train_filename, test_filename)
-english, sparql = learner.build_vocabs()
-
-
-"""
     Hyperparameters to train the seq_to_seq_bilstm model
 """
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-#device = "cpu"
-load_model = False
-save_model = True
-checkpoint_name = "models/nspm_chkpt.pth.tar"
 
-num_epochs = 100
+num_epochs = 50
 learning_rate = 1e-3
 batch_size = 16
+max_len = 300
 
-input_size_enc = len(english.vocab)
-input_size_dec = len(sparql.vocab)
-output_size = len(sparql.vocab)
+"""
+    Build the Learner to get the input and target vocabs
+"""
+learner = Learner(train_filename, test_filename,
+                  num_epochs, batch_size, learning_rate,
+                  max_len, device)
+english, sparql = learner.build_vocab()
+
+trainning = [None,"transformer","bilstm"][1]
+load_model = True
+
+"""
+    Build & Train the Transformer model
+"""
+embedding_size = 256
+num_heads = 8
+enc_nlayers = 3
+dec_nlayers = 3
+dropout = 0.1
+forward_expansion = 4
+
+if trainning == "transformer":
+    learner.train_transformer_model(embedding_size,
+                                    num_heads,
+                                    enc_nlayers,
+                                    dec_nlayers,
+                                    forward_expansion,
+                                    dropout,
+                                    load_model)
+
+"""
+    Build & Train the BiLSTM model
+"""
+
 embedding_size = 128
 hidden_size = 512
-num_layers = 2
+nlayers = 1
 dropout = 0.1
 
-"""
-    Build & Train the model
-"""
-model = BiLSTM(input_size_enc, input_size_dec,
-                embedding_size,
-                hidden_size,
-                output_size,
-                num_layers, dropout,
-                device)
+if trainning == "bilstm":
+    learner.train_bilstm_model(embedding_size,
+                               hidden_size,
+                               nlayers,
+                               dropout,
+                               load_model)
 
+"""
+    Evaluating models
+"""
+
+model = BiLSTM(len(english.vocab),
+               len(sparql.vocab),
+               embedding_size,
+               hidden_size,
+               len(sparql.vocab),
+               nlayers,
+               dropout,
+               device)
 optimizer = optim.Adam(model.parameters(), lr=learning_rate)
-scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-    optimizer, factor=0.1, patience=10, verbose=True
-)
 
-pad_idx = english.vocab.stoi["<pad>"]
-criterion = nn.CrossEntropyLoss(ignore_index=pad_idx)
+model, optimizer = load_checkpoint(torch.load("blstm_chkpt.pth.tar"), model, optimizer)
 
-
-learner.train_model(model, optimizer,
-                    device,
-                    batch_size, num_epochs,
-                    checkpoint_name, load_model, save_model=True)
-
+print(query_prediction(model, "tell me the name of solstice which starts with s", english, sparql, device, max_length=50))
