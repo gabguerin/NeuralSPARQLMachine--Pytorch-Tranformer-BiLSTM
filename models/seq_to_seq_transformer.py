@@ -3,20 +3,18 @@ import torch.nn as nn
 import random
 
 class Transformer(nn.Module):
-    def __init__(
-        self,
-        embedding_size,
-        src_vocab_size,
-        trg_vocab_size,
-        src_pad_idx,
-        num_heads,
-        num_encoder_layers,
-        num_decoder_layers,
-        forward_expansion,
-        dropout,
-        max_len,
-        device,
-    ):
+    def __init__(self, embedding_size,
+                 src_vocab_size,
+                 trg_vocab_size,
+                 src_pad_idx,
+                 num_heads,
+                 num_encoder_layers,
+                 num_decoder_layers,
+                 forward_expansion,
+                 dropout,
+                 max_len,
+                 device
+                 ):
         super(Transformer, self).__init__()
         self.src_word_embedding = nn.Embedding(src_vocab_size, embedding_size)
         self.src_position_embedding = nn.Embedding(max_len, embedding_size)
@@ -39,7 +37,6 @@ class Transformer(nn.Module):
     def make_src_mask(self, src):
         src_mask = src.transpose(0, 1) == self.src_pad_idx
 
-        # (N, src_len)
         return src_mask.to(self.device)
 
     def forward(self, src, trg):
@@ -50,8 +47,7 @@ class Transformer(nn.Module):
             torch.arange(0, src_seq_length)
             .unsqueeze(1)
             .expand(src_seq_length, N)
-            .to(self.device)
-        )
+        ).to(self.device)
 
         trg_positions = (
             torch.arange(0, trg_seq_length)
@@ -61,16 +57,14 @@ class Transformer(nn.Module):
         )
 
         embed_src = self.dropout(
-            (self.src_word_embedding(src) + self.src_position_embedding(src_positions))
+            (self.src_word_embedding(src.long()) + self.src_position_embedding(src_positions.long()))
         )
         embed_trg = self.dropout(
-            (self.trg_word_embedding(trg) + self.trg_position_embedding(trg_positions))
+            (self.trg_word_embedding(trg.long()) + self.trg_position_embedding(trg_positions.long()))
         )
 
         src_padding_mask = self.make_src_mask(src)
-        trg_mask = self.transformer.generate_square_subsequent_mask(trg_seq_length).to(
-            self.device
-        )
+        trg_mask = self.transformer.generate_square_subsequent_mask(trg_seq_length).to(self.device)
 
         out = self.transformer(
             embed_src,

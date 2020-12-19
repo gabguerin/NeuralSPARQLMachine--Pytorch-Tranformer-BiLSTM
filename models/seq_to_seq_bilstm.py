@@ -4,19 +4,20 @@ import random
 
 
 class BiLSTM(nn.Module):
-    def __init__(self, input_size_enc, input_size_dec,
+    def __init__(self, src_vocab_size, trg_vocab_size,
                  embedding_size,
                  hidden_size,
-                 output_size,
-                 num_layers, dropout,
-                 device, teacher_force_ratio=0.5):
+                 num_layers,
+                 dropout,
+                 device,
+                 teacher_force_ratio=0.5):
         super(BiLSTM, self).__init__()
-        self.encoder = LSTMEncoder(input_size_enc, embedding_size, hidden_size,
-                                   num_layers, dropout).to(device)
-        self.decoder = LSTMDecoder(input_size_dec, embedding_size, hidden_size,
-                                   output_size, num_layers, dropout).to(device)
+        self.encoder = LSTMEncoder(src_vocab_size, embedding_size, hidden_size,
+                                   num_layers, dropout)
+        self.decoder = LSTMDecoder(trg_vocab_size, embedding_size, hidden_size,
+                                   trg_vocab_size, num_layers, dropout)
         self.device = device
-        self.trg_vocab_size = output_size
+        self.trg_vocab_size = trg_vocab_size
         self.teacher_force_ratio = teacher_force_ratio
 
     def forward(self, source, target):
@@ -35,18 +36,10 @@ class BiLSTM(nn.Module):
 
             # Store prediction for current time step
             outputs[t] = output
-
             # Get the best word the Decoder predicted (index in the vocabulary)
             best_guess = output.argmax(1)
 
-            # With probability of teacher_force_ratio we take the actual next word
-            # otherwise we take the word that the Decoder predicted it to be.
-            # Teacher Forcing is used so that the model gets used to seeing
-            # similar inputs at training and testing time, if teacher forcing is 1
-            # then inputs at test time might be completely different than what the
-            # network is used to. This was a long comment.
             x = target[t] if random.random() < self.teacher_force_ratio else best_guess
-
         return outputs
 
 
@@ -64,17 +57,10 @@ class LSTMEncoder(nn.Module):
         self.dropout = nn.Dropout(dropout)
 
     def forward(self, x):
-        # x: (seq_length, N) where N is batch size
-
         embedding = self.dropout(self.embedding(x))
-        # embedding shape: (seq_length, N, embedding_size)
 
         encoder_states, (hidden, cell) = self.rnn(embedding)
-        # outputs shape: (seq_length, N, hidden_size)
 
-        # Use forward, backward cells and hidden through a linear layer
-        # so that it can be input to the decoder which is not bidirectional
-        # Also using index slicing ([idx:idx+1]) to keep the dimension
         hidden = self.fc_hidden(torch.cat((hidden[0:1], hidden[1:2]), dim=2))
         cell = self.fc_cell(torch.cat((cell[0:1], cell[1:2]), dim=2))
 
