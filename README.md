@@ -17,6 +17,7 @@
 
 ## 2. Train & Test seq_to_seq model (Learner)
 
+- LC-QuAD2.0 : Results on test set after 100 epochs of training
 <table>
     <thead>
         <tr>
