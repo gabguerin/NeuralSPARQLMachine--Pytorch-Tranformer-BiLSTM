@@ -18,7 +18,7 @@ class Generator():
 
             SELECT ?answer WHERE { wd:Q169794 wdt:P26 ?X . ?X wdt:P22 ?answer}
                        ====>
-            select var1 where brack_open wd_q169794 wdt_p26 var2 sep_dot var2 wdt_p22 var1 brack_close
+            select var1 where brack_open wd_qxxx wdt_p26 var2 sep_dot var2 wdt_pxxx var1 brack_close
         """
         query = " ".join([w.upper() if w in self.sparql_func else w for w in query.split(' ')])
         sparql_query = SPARQL(query)
@@ -31,8 +31,8 @@ class Generator():
         query = query.replace("(", " par_open ")
         query = query.replace(")", " par_close ")
         query = query.replace(".", "sep_dot")
-        query = re.sub(":Q[0-9]*","_Qxxx", query)
-        query = re.sub(":P[0-9]*","_Pxxx", query)
+        query = re.sub(":Q[0-9]*","_qxxx", query)
+        query = re.sub(":P[0-9]*","_pxxx", query)
         query = query.replace("  ", " ").lower()
 
         if query[0] == ' ':
@@ -56,8 +56,8 @@ class Generator():
         query = query.replace(" prts_close ", ")")
         query = query.replace("sep_dot", ".")
         query = query.replace("_", ":")
-        query = query.replace("p", "P")
-        query = query.replace("q", "Q")
+        query = query.replace("pxxx", "PXXX")
+        query = query.replace("qxxx", "QXXX")
         return query
 
 
