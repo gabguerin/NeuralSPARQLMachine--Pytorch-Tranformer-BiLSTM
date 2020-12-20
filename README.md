@@ -32,7 +32,7 @@
             <td align="right">81.6</td>
         </tr>
         <tr>
-            <td>BiLSTM</td>
+            <td>BiLSTM w/ attention</td>
             <td align="right"></td>
             <td align="right"></td>
         </tr>
