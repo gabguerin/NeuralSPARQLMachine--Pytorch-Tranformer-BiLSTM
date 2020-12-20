@@ -17,9 +17,27 @@
 
 ## 2. Train & Test seq_to_seq model (Learner)
 
-| LC-QuAD2.0    |     Accuracy    |    BLEU    |
-| ------------- |: -------------: | ---------: |
-| Transformer   |     **89.3**    |   **81.6** |
-| BiLSTM        |                 |            |
+<table>
+    <thead>
+        <tr>
+            <th>LC-QuAD2.0</th>
+            <th align="center">Accuracy</th>
+            <th align="center">BLEU</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>Transformer</td>
+            <td align="center">89.3</td>
+            <td align="center">81.6</td>
+        </tr>
+        <tr>
+            <td>BiLSTM</td>
+            <td align="center"></td>
+            <td align="center"></td>
+        </tr>
+    </tbody>
+</table>
+N.B. Since we encode all entities & relations under the same name, the sparql vocab size is small and the BLEU score is impressively big
 
 ## 3. Decode data & Entity linking (Interpreter)
