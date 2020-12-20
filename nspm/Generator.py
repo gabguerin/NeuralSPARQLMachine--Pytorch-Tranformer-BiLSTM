@@ -31,7 +31,8 @@ class Generator():
         query = query.replace("(", " par_open ")
         query = query.replace(")", " par_close ")
         query = query.replace(".", "sep_dot")
-        query = query.replace(":", "_")
+        query = re.sub(":Q[0-9]*","_Qxxx", query)
+        query = re.sub(":P[0-9]*","_Pxxx", query)
         query = query.replace("  ", " ").lower()
 
         if query[0] == ' ':

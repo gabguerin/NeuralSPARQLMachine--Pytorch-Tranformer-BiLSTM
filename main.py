@@ -17,9 +17,9 @@ nl_questions = data.question.values
 wd_queries = data.sparql_wikidata.values
 
 """
-    Build the Generator to generate files with form:
-        question,                   sparql_query
-        what medical specialty...., select var1 where brack_open wd_q168805...
+    Build the Generator to generate pairs under the form:
+        question :  what is philippine standard geographic code for angeles
+        query :     select distinct var1 where bkt_open wd_qxxx wdt_pxxx var1 bkt_close
 """
 generator = Generator(nl_questions, wd_queries)
 
@@ -46,7 +46,7 @@ learner = Learner(train_filename, test_filename,
 english, sparql = learner.build_vocab()
 
 trainning = [None,"transformer","bilstm"][1]
-load_model = True
+load_model = False
 
 """
     Build & Train the Transformer model
@@ -84,7 +84,7 @@ if trainning == "bilstm":
                                load_model)
 
 """
-    Evaluating models
+    Evaluating the model
 """
 
 model = BiLSTM(len(english.vocab),
@@ -100,3 +100,8 @@ optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 model, optimizer = load_checkpoint(torch.load("blstm_chkpt.pth.tar"), model, optimizer)
 
 print(query_prediction(model, "tell me the name of solstice which starts with s", english, sparql, device, max_length=50))
+
+
+"""
+    Build the Interpreter to get the corrected SPARQL query
+"""

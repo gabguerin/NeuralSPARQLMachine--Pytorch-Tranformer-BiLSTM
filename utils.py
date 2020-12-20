@@ -44,3 +44,4 @@ def query_prediction(model, sentence, english, sparql, device, max_length=50):
     query_pred = [sparql.vocab.itos[idx] for idx in outputs]
     # remove start token
     return query_pred[1:]
+
