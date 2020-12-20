@@ -22,6 +22,4 @@
 | Transformer   |     **89.3**    |   **81.6** |
 | BiLSTM        |                 |            |
 
-N.B. Since we encode all entities & relations under the same name, the sparql vocab size is small and the BLEU score is impressively big
-
 ## 3. Decode data & Entity linking (Interpreter)
