@@ -38,6 +38,6 @@
         </tr>
     </tbody>
 </table>
-N.B. Since we encode all entities & relations under the same name, the sparql vocab size is small and the BLEU score is impressively big
+<i>N.B. Since we encode all entities & relations under the same name, the sparql vocab size is small and the BLEU score is impressively high</i>
 
 ## 3. Decode data & Entity linking (Interpreter)
