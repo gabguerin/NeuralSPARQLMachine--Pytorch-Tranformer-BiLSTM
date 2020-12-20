@@ -1,7 +1,7 @@
 # NeuralSPARQLMachine--Pytorch-Tranformer-BiLSTM
 > The architecture of this Neural SPARQL Machine is inspired by the one prensented in this [paper](https://s3.eu-west-2.amazonaws.com/tsoru.aksw.org/neural-sparql-machines/soru-marx-semantics2017.html) :
 <p align="center">
-  <img src="https://github.com/gabguerin/NeuralSPARQLMachine--Pytorch-Tranformer-BiLSTM/data/NSPM2.PNG" width="700" height="350">
+  <img src="https://github.com/gabguerin/NeuralSPARQLMachine--Pytorch-Tranformer-BiLSTM/blob/main/data/NSPM2.PNG" width="700" height="350">
 </p>
 
 ## 1. Encode data (Generator)
