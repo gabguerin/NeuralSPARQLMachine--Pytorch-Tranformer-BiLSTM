@@ -28,13 +28,13 @@
     <tbody>
         <tr>
             <td>Transformer</td>
-            <td align="center">89.3</td>
-            <td align="center">81.6</td>
+            <td align="right">89.3</td>
+            <td align="right">81.6</td>
         </tr>
         <tr>
             <td>BiLSTM</td>
-            <td align="center"></td>
-            <td align="center"></td>
+            <td align="right"></td>
+            <td align="right"></td>
         </tr>
     </tbody>
 </table>
