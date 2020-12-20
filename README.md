@@ -5,7 +5,9 @@
 </p>
 
 ## 1. Encode data (Generator)
-
+<p align="center">
+  <img src="https://github.com/gabguerin/NeuralSPARQLMachine--Pytorch-Tranformer-BiLSTM/blob/main/data/encod.PNG" width="450" height="200">
+</p>
 ## 2. Train & Test transformer model (Learner)
 
 ## 3. Decode data & Entity linking (Interpreter)
