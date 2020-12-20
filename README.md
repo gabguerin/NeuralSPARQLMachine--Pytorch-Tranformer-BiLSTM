@@ -6,20 +6,23 @@
 
 ## 1. Encode data (Generator)
 ```sparql
-Generator input:
+<Generator input>
       question : What is the ISSF ID of Kim Rhode?
   sparql_query : SELECT DISCTINCT ?answer WHERE { wd:Q233759 wdt:P2730 ?answer}
 
-Generator output:
+<Generator output>
       question : what is the issf id of kim rhode
   sparql_query : select distinct var1 where bkt_open wd_qxxx wdt_pxxx var1 bkt_close
 ```
 
-## 2. Train & Test the seq_to_seq model (Learner)
+## 2. Train & Test seq_to_seq model (Learner)
 
-LC-QuAD2.0 | Acc | BLEU
-:- | -: | -:
-Transformer | **1** | **_valeur_**
-BiLSTM |  | 
+- Trained for 100 epochs on LC-QuAD2.0 dataset (results on test data)
+LC-QuAD2.0 | Loss | Accuracy | BLEU
+:- | -: | -: | -:
+Transformer | **0.17** | **89.3** | **81.6**
+BiLSTM |  |  |
+
+N.B. Since we encode all entities & relations under the same name, the sparql vocab size is small and the BLEU score is impressively big
 
 ## 3. Decode data & Entity linking (Interpreter)
