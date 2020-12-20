@@ -8,7 +8,7 @@
 ```sparql
 Generator input:
       question : What is the ISSF ID of Kim Rhode?
-  sparql_query : select distinct ?answer where { wd:Q233759 wdt:P2730 ?answer}
+  sparql_query : SELECT DISCTINCT ?answer WHERE { wd:Q233759 wdt:P2730 ?answer}
 
 Generator output:
       question : what is the issf id of kim rhode
