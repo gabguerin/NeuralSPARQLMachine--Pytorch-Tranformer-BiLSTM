@@ -6,7 +6,7 @@
 
 ## 1. Encode data (Generator)
 ```bash
-Original data:
+Generator input:
       question : What is the ISSF ID of Kim Rhode?
   sparql_query : select distinct ?answer where { wd:Q233759 wdt:P2730 ?answer}
 
