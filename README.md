@@ -15,6 +15,11 @@ Generator output:
   sparql_query : select distinct var1 where bkt_open wd_qxxx wdt_pxxx var1 bkt_close
 ```
 
-## 2. Train & Test transformer model (Learner)
+## 2. Train & Test the seq_to_seq model (Learner)
+
+LC-QuAD2.0 | Acc | BLEU
+:- | -: | -:
+Transformer | **1** | **_valeur_**
+BiLSTM |  | 
 
 ## 3. Decode data & Entity linking (Interpreter)
