@@ -10,7 +10,7 @@ class BiLSTM(nn.Module):
                  num_layers,
                  dropout,
                  device,
-                 teacher_force_ratio=0.5):
+                 teacher_force_ratio=0.4):
         super(BiLSTM, self).__init__()
         self.encoder = LSTMEncoder(src_vocab_size, embedding_size, hidden_size,
                                    num_layers, dropout)
@@ -20,26 +20,21 @@ class BiLSTM(nn.Module):
         self.trg_vocab_size = trg_vocab_size
         self.teacher_force_ratio = teacher_force_ratio
 
-    def forward(self, source, target):
-        batch_size = source.shape[1]
-        target_len = target.shape[0]
+    def forward(self, src, trg):
+        trg_seq_length, N = trg.shape
 
-        outputs = torch.zeros(target_len, batch_size, self.trg_vocab_size).to(self.device)
-        encoder_states, hidden, cell = self.encoder(source)
+        outputs = torch.zeros(trg_seq_length, N, self.trg_vocab_size).to(self.device)
+        encoder_states, hidden, cell = self.encoder(src)
 
-        # First input will be <SOS> token
-        x = target[0]
+        x = trg[0]
 
-        for t in range(1, target_len):
-            # At every time step use encoder_states and update hidden, cell
+        for t in range(1, trg_seq_length):
             output, hidden, cell = self.decoder(x, encoder_states, hidden, cell)
 
-            # Store prediction for current time step
             outputs[t] = output
-            # Get the best word the Decoder predicted (index in the vocabulary)
             best_guess = output.argmax(1)
 
-            x = target[t] if random.random() < self.teacher_force_ratio else best_guess
+            x = trg[t] if random.random() < self.teacher_force_ratio else best_guess
         return outputs
 
 
@@ -88,10 +83,8 @@ class LSTMDecoder(nn.Module):
 
     def forward(self, x, encoder_states, hidden, cell):
         x = x.unsqueeze(0)
-        # x: (1, N) where N is the batch size
 
         embedding = self.dropout(self.embedding(x))
-        # embedding shape: (1, N, embedding_size)
 
         sequence_length = encoder_states.shape[0]
         h_reshaped = hidden.repeat(sequence_length, 1, 1)

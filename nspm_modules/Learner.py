@@ -1,14 +1,13 @@
 from torchtext.data import Field, BucketIterator, TabularDataset
 from utils import load_checkpoint, save_checkpoint
 from torchtext.data.utils import get_tokenizer
-from spacy.tokenizer import Tokenizer
 import torch
+from utils import bleu
 from torch import optim
 import torch.nn as nn
-from torch.utils.tensorboard import SummaryWriter
 from models.seq_to_seq_bilstm import BiLSTM
 from models.seq_to_seq_transformer import Transformer
-from torchtext.data.metrics import bleu_score
+from time import time
 
 
 class Learner():
@@ -40,6 +39,14 @@ class Learner():
             fields=fields
         )
 
+        self.english.build_vocab(self.train_data, max_size=20000, min_freq=2)
+        self.sparql.build_vocab(self.train_data, max_size=20000, min_freq=2)
+
+        self.src_pad_idx = self.english.vocab.stoi['<pad>']
+        self.src_vocab_size = len(self.english.vocab)
+        self.trg_vocab_size = len(self.sparql.vocab)
+
+
         self.train_iterator, self.test_iterator = BucketIterator.splits(
             (self.train_data, self.test_data),
             batch_size=self.batch_size,
@@ -47,16 +54,6 @@ class Learner():
             sort_key=lambda x: len(x.src),
             device=self.device,
         )
-
-
-
-    def build_vocab(self):
-        self.english.build_vocab(self.train_data, max_size=20000, min_freq=2)
-        self.sparql.build_vocab(self.train_data, max_size=20000, min_freq=2)
-        return self.english, self.sparql
-
-    def get_data(self):
-        return self.train_data, self.test_data
 
 
     def train_transformer_model(self,
@@ -69,11 +66,8 @@ class Learner():
                                 load_model, save_model=True,
                                 checkpoint_name="models/tfmr_chkpt.pth.tar"):
 
-        src_pad_idx = self.english.vocab.stoi['<pad>']
-        src_vocab_size = len(self.english.vocab)
-        trg_vocab_size = len(self.sparql.vocab)
-
-        model = Transformer(embedding_size, src_vocab_size, trg_vocab_size, src_pad_idx,
+        print("\nTraining Transformer model...\n")
+        model = Transformer(embedding_size, self.src_vocab_size, self.trg_vocab_size, self.src_pad_idx,
                             num_heads, enc_nlayers, dec_nlayers, forward_expansion,
                             dropout, self.max_len, self.device
                 ).to(self.device)
@@ -82,11 +76,12 @@ class Learner():
         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
             optimizer, factor=0.1, patience=10, verbose=True
         )
-        criterion = nn.CrossEntropyLoss(ignore_index=src_pad_idx)
+        criterion = nn.CrossEntropyLoss(ignore_index=self.src_pad_idx)
 
         if load_model:
             load_checkpoint(torch.load(checkpoint_name), model, optimizer)
 
+        t0 = time()
         for epoch in range(self.num_epochs):
             if save_model:
                 checkpoint = {
@@ -96,19 +91,18 @@ class Learner():
                 save_checkpoint(checkpoint, checkpoint_name)
 
             model.train()
-
             losses = []
             for batch_idx, batch in enumerate(self.train_iterator):
                 src_data = batch.src.to(self.device)
                 trg_data = batch.trg.to(self.device)
 
                 output = model(src_data, trg_data[:-1])
-                output = output.reshape(-1, trg_vocab_size)
-                trg_data = trg_data[1:].reshape(-1)
+                output = output.reshape(-1, self.trg_vocab_size)
+                trg = trg_data[1:].reshape(-1)
 
                 optimizer.zero_grad()
 
-                loss = criterion(output, trg_data)
+                loss = criterion(output, trg)
                 losses.append(loss.item())
                 loss.backward()
 
@@ -119,7 +113,7 @@ class Learner():
             mean_loss = sum(losses) / len(losses)
             scheduler.step(mean_loss)
 
-            print(f"[epoch: {epoch+1} / {self.num_epochs} | loss: {mean_loss}]")
+            print(f"[epoch: {epoch+1}/{self.num_epochs} | loss: {mean_loss}] elapsed: {(time()-t0)//60} min")
 
 
     def test_transformer_model(self,
@@ -132,21 +126,14 @@ class Learner():
                                 load_model,
                                 checkpoint_name="models/tfmr_chkpt.pth.tar"):
 
-        src_pad_idx = self.english.vocab.stoi['<pad>']
-        src_vocab_size = len(self.english.vocab)
-        trg_vocab_size = len(self.sparql.vocab)
-
-        model = Transformer(embedding_size, src_vocab_size, trg_vocab_size, src_pad_idx,
+        print("\nTesting Transformer model...\n")
+        model = Transformer(embedding_size, self.src_vocab_size, self.trg_vocab_size, self.src_pad_idx,
                             num_heads, enc_nlayers, dec_nlayers, forward_expansion,
                             dropout, self.max_len, self.device
                 ).to(self.device)
 
         optimizer = optim.Adam(model.parameters(), lr=self.learning_rate)
-        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-            optimizer, factor=0.1, patience=10, verbose=True
-        )
-        criterion = nn.CrossEntropyLoss(ignore_index=src_pad_idx)
-
+        criterion = nn.CrossEntropyLoss(ignore_index=self.src_pad_idx)
 
         if load_model:
             load_checkpoint(torch.load(checkpoint_name), model, optimizer)
@@ -160,17 +147,21 @@ class Learner():
                 src_data = batch.src.to(self.device)
                 trg_data = batch.trg.to(self.device)
 
-                output = model(src_data, trg_data, 0)  # turn off teacher forcing
-                output = output[1:].view(-1, output.shape[-1])
-                trg = trg[1:].view(-1)
+                output = model(src_data, trg_data[:-1])
+                output = output.reshape(-1, self.trg_vocab_size)
+                trg = trg_data[1:].reshape(-1)
 
-                targets.append([trg])
+                targets.append([trg_data])
                 predictions.append(output)
 
                 loss = criterion(output, trg)
                 losses.append(loss.item())
 
-        print(f"On test dataset:\n[loss: {sum(losses) / len(losses)}, BLEU: {bleu_score(predictions, targets)}")
+            print(f"Loss: {sum(losses) / len(losses)}")
+
+            bleu_score, acc = bleu(self.test_data[1:], model, self.english, self.sparql, self.device)
+            print(f"Bleu score: {bleu_score * 100:.2f} | Accuracy: {acc * 100:.2f}")
+
 
 
     def train_bilstm_model(self,
@@ -181,27 +172,16 @@ class Learner():
                            load_model, save_model=True,
                            checkpoint_name="models/blstm_chkpt.pth.tar"):
 
-        src_pad_idx = self.english.vocab.stoi['<pad>']
-
-        model = BiLSTM(len(self.english.vocab),
-                       len(self.sparql.vocab),
-                       embedding_size,
-                       hidden_size,
-                       len(self.sparql.vocab),
-                       nlayers,
-                       dropout,
-                       self.device,
+        print("\nTraining BiLSTM model...\n")
+        model = BiLSTM(len(self.english.vocab), len(self.sparql.vocab),
+                       embedding_size, hidden_size, nlayers, dropout, self.device,
         ).to(self.device)
 
         optimizer = optim.Adam(model.parameters(), lr=self.learning_rate)
         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
             optimizer, factor=0.1, patience=10, verbose=True
         )
-        criterion = nn.CrossEntropyLoss(ignore_index=src_pad_idx)
-
-
-        writer = SummaryWriter(f"runs/loss_plot_")
-        step = 0
+        criterion = nn.CrossEntropyLoss(ignore_index=self.src_pad_idx)
 
         train_iterator, test_iterator = BucketIterator.splits(
             (self.train_data, self.test_data),
@@ -214,6 +194,7 @@ class Learner():
         if load_model:
             load_checkpoint(torch.load(checkpoint_name), model, optimizer)
 
+        t0 = time()
         for epoch in range(self.num_epochs):
             if save_model:
                 checkpoint = {
@@ -231,11 +212,11 @@ class Learner():
 
                 output = model(src_data, trg_data)
                 output = output[1:].reshape(-1, output.shape[2])
-                trg_data = trg_data[1:].reshape(-1)
+                trg = trg_data[1:].reshape(-1)
 
                 optimizer.zero_grad()
 
-                loss = criterion(output, trg_data)
+                loss = criterion(output, trg)
                 losses.append(loss.item())
                 loss.backward()
 
@@ -246,4 +227,49 @@ class Learner():
             mean_loss = sum(losses) / len(losses)
             scheduler.step(mean_loss)
 
-            print(f"[epoch: {epoch+1} / {self.num_epochs} | loss: {mean_loss}]")
+            print(f"[epoch: {epoch+1}/{self.num_epochs} | loss: {mean_loss}] elapsed: {(time()-t0)//60} min")
+
+
+    def test_bilstm_model(self,
+                           embedding_size,
+                           hidden_size,
+                           nlayers,
+                           dropout,
+                           load_model,
+                           checkpoint_name="models/blstm_chkpt.pth.tar"):
+
+        print("\nTesting BiLSTM model...\n")
+        model = BiLSTM(len(self.english.vocab), len(self.sparql.vocab),
+                       embedding_size, hidden_size, nlayers, dropout, self.device,
+        ).to(self.device)
+
+        optimizer = optim.Adam(model.parameters(), lr=self.learning_rate)
+        criterion = nn.CrossEntropyLoss(ignore_index=self.src_pad_idx)
+
+
+        if load_model:
+            load_checkpoint(torch.load(checkpoint_name), model, optimizer)
+
+        with torch.no_grad():
+            model.eval()
+
+            targets, predictions = [], []
+            losses = []
+            for _, batch in enumerate(self.test_iterator):
+                src_data = batch.src.to(self.device)
+                trg_data = batch.trg.to(self.device)
+
+                output = model(src_data, trg_data)
+                output = output[1:].reshape(-1, output.shape[2])
+                trg = trg_data[1:].reshape(-1)
+
+                targets.append([trg])
+                predictions.append(output)
+
+                loss = criterion(output, trg)
+                losses.append(loss.item())
+
+            print(f"Loss: {sum(losses) / len(losses)}")
+
+            bleu_score, accuracy = bleu(self.test_data[1:], model, self.english, self.sparql, self.device)
+            print(f"Bleu score: {bleu_score * 100:.2f} | Accuracy: {accuracy * 100:.2f}")

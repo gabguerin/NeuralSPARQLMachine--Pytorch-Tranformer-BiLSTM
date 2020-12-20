@@ -1,13 +1,7 @@
-import warnings
-#warnings.filterwarnings("ignore")
-from nspm.Generator import Generator
-from nspm.Learner import Learner
+from nspm_modules.Generator import Generator
+from nspm_modules.Learner import Learner
 import pandas as pd
 import torch
-from torch import optim
-from models.seq_to_seq_bilstm import BiLSTM
-from models.seq_to_seq_transformer import Transformer
-from utils import load_checkpoint, save_checkpoint, query_prediction, bleu
 
 
 lcquad_train = pd.read_json("data/LC-QuAD2.0/dataset/train.json")[["question","sparql_wikidata"]]
@@ -25,7 +19,7 @@ wd_queries = data.sparql_wikidata.values
 generator = Generator(nl_questions, wd_queries)
 
 train_filename, test_filename = "lcquad_train.csv", "lcquad_test.csv"
-generator.generate_train_test_files(train_filename, test_filename)
+#generator.generate_train_test_files(train_filename, test_filename)
 
 
 """
@@ -44,11 +38,12 @@ max_len = 300
 learner = Learner(train_filename, test_filename,
                   num_epochs, batch_size, learning_rate,
                   max_len, device)
-english, sparql = learner.build_vocab()
 
-training = [None,"transformer","bilstm"][1]
-testing = [None,"transformer","bilstm"][1]
-load_model = False
+
+
+training = [None,"transformer","bilstm"][2]
+testing = [None,"transformer","bilstm"][2]
+load_model = True
 
 """
     Build & Train the Transformer model
@@ -77,6 +72,30 @@ if testing == "transformer":
                                     forward_expansion,
                                     dropout,
                                     load_model)
+
+
+"""
+    Build & Train the BiLSTM model
+"""
+embedding_size = 128
+hidden_size = 64
+nlayers = 1
+enc_dropout = 0.1
+dec_dropout = 0.1
+
+if training == "bilstm":
+    learner.train_bilstm_model(embedding_size,
+                                   hidden_size,
+                                   nlayers,
+                                   dropout,
+                                   load_model)
+
+if testing == "bilstm":
+    learner.test_bilstm_model(embedding_size,
+                                   hidden_size,
+                                   nlayers,
+                                   dropout,
+                                   load_model)
 
 
 
