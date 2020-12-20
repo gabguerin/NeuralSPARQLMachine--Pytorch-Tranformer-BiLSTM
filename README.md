@@ -18,10 +18,11 @@
 ## 2. Train & Test seq_to_seq model (Learner)
 
 - Trained for 100 epochs on LC-QuAD2.0 dataset (results on test data)
-LC-QuAD2.0 | Loss | Accuracy | BLEU
-:- | -: | -: | -:
-Transformer | **0.17** | **89.3** | **81.6**
-BiLSTM |  |  |
+
+| LC-QuAD2.0    |     Accuracy    |    BLEU    |
+| ------------- |: -------------: | ---------: |
+| Transformer   |     **89.3**    |   **81.6** |
+| BiLSTM        |                 |            |
 
 N.B. Since we encode all entities & relations under the same name, the sparql vocab size is small and the BLEU score is impressively big
 
