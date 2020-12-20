@@ -16,8 +16,7 @@
 ```
 
 ## 2. Train & Test seq_to_seq model (Learner)
-
-- Trained for 100 epochs on LC-QuAD2.0 dataset (results on test data)
+Trained for 100 epochs on LC-QuAD2.0 dataset (results on test data)
 
 | LC-QuAD2.0    |     Accuracy    |    BLEU    |
 | ------------- |: -------------: | ---------: |
