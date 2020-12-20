@@ -1,5 +1,6 @@
 import torch
 from torchtext.data.utils import get_tokenizer
+from torchtext.data.metrics import bleu_score
 
 def save_checkpoint(state, filename):
     torch.save(state, filename)
@@ -44,4 +45,21 @@ def query_prediction(model, sentence, english, sparql, device, max_length=50):
     query_pred = [sparql.vocab.itos[idx] for idx in outputs]
     # remove start token
     return query_pred[1:]
+
+
+def bleu(data, model, english, sparql, device):
+    targets = []
+    outputs = []
+
+    for example in data:
+        src = vars(example)["src"]
+        trg = vars(example)["trg"]
+
+        prediction = query_prediction(model, src, sparql, english, device)
+        prediction = prediction[:-1]  # remove <eos> token
+
+        targets.append([trg])
+        outputs.append(prediction)
+
+    return bleu_score(outputs, targets)
 

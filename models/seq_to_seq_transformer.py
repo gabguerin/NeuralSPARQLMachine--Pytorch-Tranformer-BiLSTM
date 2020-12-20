@@ -36,8 +36,8 @@ class Transformer(nn.Module):
 
     def make_src_mask(self, src):
         src_mask = src.transpose(0, 1) == self.src_pad_idx
-
         return src_mask.to(self.device)
+
 
     def forward(self, src, trg):
         src_seq_length, N = src.shape

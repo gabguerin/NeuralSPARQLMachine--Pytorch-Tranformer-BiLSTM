@@ -8,7 +8,7 @@ import torch.nn as nn
 from torch.utils.tensorboard import SummaryWriter
 from models.seq_to_seq_bilstm import BiLSTM
 from models.seq_to_seq_transformer import Transformer
-import matplotlib.pyplot as plt
+from torchtext.data.metrics import bleu_score
 
 
 class Learner():
@@ -40,6 +40,16 @@ class Learner():
             fields=fields
         )
 
+        self.train_iterator, self.test_iterator = BucketIterator.splits(
+            (self.train_data, self.test_data),
+            batch_size=self.batch_size,
+            sort_within_batch=True,
+            sort_key=lambda x: len(x.src),
+            device=self.device,
+        )
+
+
+
     def build_vocab(self):
         self.english.build_vocab(self.train_data, max_size=20000, min_freq=2)
         self.sparql.build_vocab(self.train_data, max_size=20000, min_freq=2)
@@ -63,39 +73,16 @@ class Learner():
         src_vocab_size = len(self.english.vocab)
         trg_vocab_size = len(self.sparql.vocab)
 
-        model = Transformer(
-            embedding_size,
-            src_vocab_size,
-            trg_vocab_size,
-            src_pad_idx,
-            num_heads,
-            enc_nlayers,
-            dec_nlayers,
-            forward_expansion,
-            dropout,
-            self.max_len,
-            self.device
-        ).to(self.device)
+        model = Transformer(embedding_size, src_vocab_size, trg_vocab_size, src_pad_idx,
+                            num_heads, enc_nlayers, dec_nlayers, forward_expansion,
+                            dropout, self.max_len, self.device
+                ).to(self.device)
 
         optimizer = optim.Adam(model.parameters(), lr=self.learning_rate)
         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
             optimizer, factor=0.1, patience=10, verbose=True
         )
         criterion = nn.CrossEntropyLoss(ignore_index=src_pad_idx)
-
-
-        # Tensorboard to get nice loss plot
-        writer = SummaryWriter(f"runs/loss_plot_")
-        step = 0
-
-        train_iterator, test_iterator = BucketIterator.splits(
-            (self.train_data, self.test_data),
-            batch_size=self.batch_size,
-            sort_within_batch=True,
-            sort_key=lambda x: len(x.src),
-            device=self.device,
-        )
-
 
         if load_model:
             load_checkpoint(torch.load(checkpoint_name), model, optimizer)
@@ -111,39 +98,79 @@ class Learner():
             model.train()
 
             losses = []
-            for batch_idx, batch in enumerate(train_iterator):
+            for batch_idx, batch in enumerate(self.train_iterator):
                 src_data = batch.src.to(self.device)
                 trg_data = batch.trg.to(self.device)
 
-                # Forward prop
                 output = model(src_data, trg_data[:-1])
                 output = output.reshape(-1, trg_vocab_size)
-
                 trg_data = trg_data[1:].reshape(-1)
 
                 optimizer.zero_grad()
 
                 loss = criterion(output, trg_data)
                 losses.append(loss.item())
-
                 loss.backward()
 
-                # Clip to avoid exploding gradient
                 torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1)
 
-                # Gradient descent step
                 optimizer.step()
 
-                # Plot to tensorboard
-                writer.add_scalar("Training loss", loss, global_step=step)
-                step += 1
             mean_loss = sum(losses) / len(losses)
             scheduler.step(mean_loss)
 
             print(f"[epoch: {epoch+1} / {self.num_epochs} | loss: {mean_loss}]")
 
 
+    def test_transformer_model(self,
+                                embedding_size,
+                                num_heads,
+                                enc_nlayers,
+                                dec_nlayers,
+                                forward_expansion,
+                                dropout,
+                                load_model,
+                                checkpoint_name="models/tfmr_chkpt.pth.tar"):
 
+        src_pad_idx = self.english.vocab.stoi['<pad>']
+        src_vocab_size = len(self.english.vocab)
+        trg_vocab_size = len(self.sparql.vocab)
+
+        model = Transformer(embedding_size, src_vocab_size, trg_vocab_size, src_pad_idx,
+                            num_heads, enc_nlayers, dec_nlayers, forward_expansion,
+                            dropout, self.max_len, self.device
+                ).to(self.device)
+
+        optimizer = optim.Adam(model.parameters(), lr=self.learning_rate)
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+            optimizer, factor=0.1, patience=10, verbose=True
+        )
+        criterion = nn.CrossEntropyLoss(ignore_index=src_pad_idx)
+
+
+        if load_model:
+            load_checkpoint(torch.load(checkpoint_name), model, optimizer)
+
+        with torch.no_grad():
+            model.eval()
+
+            targets, predictions = [], []
+            losses = []
+            for _, batch in enumerate(self.test_iterator):
+                src_data = batch.src.to(self.device)
+                trg_data = batch.trg.to(self.device)
+
+                output = model(src_data, trg_data, 0)  # turn off teacher forcing
+                output = output[1:].view(-1, output.shape[-1])
+                trg = trg[1:].view(-1)
+
+                targets.append([trg])
+                predictions.append(output)
+
+                loss = criterion(output, trg)
+                losses.append(loss.item())
+
+        print(f"On test dataset:\n[loss: {sum(losses) / len(losses)}, BLEU: {bleu_score(predictions, targets)}")
 
 
     def train_bilstm_model(self,
@@ -202,27 +229,20 @@ class Learner():
                 src_data = batch.src.to(self.device)
                 trg_data = batch.trg.to(self.device)
 
-                # Forward prop
                 output = model(src_data, trg_data)
-
                 output = output[1:].reshape(-1, output.shape[2])
                 trg_data = trg_data[1:].reshape(-1)
 
                 optimizer.zero_grad()
+
                 loss = criterion(output, trg_data)
                 losses.append(loss.item())
-
                 loss.backward()
 
-                # Clip to avoid exploding gradient
                 torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1)
 
-                # Gradient descent step
                 optimizer.step()
 
-                # Plot to tensorboard
-                writer.add_scalar("Training loss", loss, global_step=step)
-                step += 1
             mean_loss = sum(losses) / len(losses)
             scheduler.step(mean_loss)
 
