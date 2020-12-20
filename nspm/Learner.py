@@ -41,8 +41,8 @@ class Learner():
         )
 
     def build_vocab(self):
-        self.english.build_vocab(self.train_data, max_size=20000)
-        self.sparql.build_vocab(self.train_data, max_size=20000)
+        self.english.build_vocab(self.train_data, max_size=20000, min_freq=2)
+        self.sparql.build_vocab(self.train_data, max_size=20000, min_freq=2)
         return self.english, self.sparql
 
     def get_data(self):
@@ -140,7 +140,7 @@ class Learner():
             mean_loss = sum(losses) / len(losses)
             scheduler.step(mean_loss)
 
-            print(f"[epoch: {epoch} / {self.num_epochs} | loss: {mean_loss}]")
+            print(f"[epoch: {epoch+1} / {self.num_epochs} | loss: {mean_loss}]")
 
 
 
@@ -226,4 +226,4 @@ class Learner():
             mean_loss = sum(losses) / len(losses)
             scheduler.step(mean_loss)
 
-            print(f"[epoch: {epoch} / {self.num_epochs} | loss: {mean_loss}]")
+            print(f"[epoch: {epoch+1} / {self.num_epochs} | loss: {mean_loss}]")
