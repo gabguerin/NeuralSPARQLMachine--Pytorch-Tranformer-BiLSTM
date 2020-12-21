@@ -40,25 +40,8 @@ class Generator():
         return query
 
     def clean_txt(self, txt):
-        txt = re.sub('[^a-zA-Z0-9 \.\']+', '', txt)
+        txt = re.sub('[^a-zA-Z0-9 .\']+', '', txt)
         return txt.lower()
-
-    def decode_query(self, query):
-        """
-            select var1 where bkt_open wd_q169794 wdt_p26 var2 sep_dot var2 wdt_p22 var1 bkt_close
-                       ====>
-            SELECT var1 WHERE {wd:Q169794 wdt:P26 var2 . var2 wdt:P22 var1}
-        """
-        query = " ".join([w.upper() if w in self.sparql_func else w for w in query.split(' ')])
-        query = query.replace("bkt_open ", "{")
-        query = query.replace(" bkt_close", "}")
-        query = query.replace(" prts_open ", '(')
-        query = query.replace(" prts_close ", ")")
-        query = query.replace("sep_dot", ".")
-        query = query.replace("_", ":")
-        query = query.replace("pxxx", "PXXX")
-        query = query.replace("qxxx", "QXXX")
-        return query
 
 
     def generate_train_test_files(self, train_filename, test_filename):

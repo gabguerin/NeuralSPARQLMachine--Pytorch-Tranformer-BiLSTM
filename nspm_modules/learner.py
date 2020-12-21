@@ -55,6 +55,8 @@ class Learner():
             device=self.device,
         )
 
+    def get_vocab(self):
+        return self.english, self.sparql
 
     def train_transformer_model(self,
                                 embedding_size,

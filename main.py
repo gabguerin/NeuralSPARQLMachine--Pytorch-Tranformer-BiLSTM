@@ -1,9 +1,22 @@
-from nspm_modules.Generator import Generator
-from nspm_modules.Learner import Learner
+from nspm_modules.generator import Generator
+from nspm_modules.learner import Learner
+from nspm_modules.interpreter import Interpreter
+from models.seq_to_seq_transformer import Transformer
+from torch import optim
+from utils import load_checkpoint
 import pandas as pd
 import torch
 
 
+training = [None,"transformer","bilstm"][0]
+testing = [None,"transformer","bilstm"][0]
+load_model = True
+
+"""
+    Build the Generator to generate pairs under the form:
+        question :  what is philippine standard geographic code for angeles
+        query :     select distinct var1 where bkt_open wd_qxxx wdt_pxxx var1 bkt_close
+"""
 lcquad_train = pd.read_json("data/LC-QuAD2.0/dataset/train.json")[["question","sparql_wikidata"]]
 lcquad_test = pd.read_json("data/LC-QuAD2.0/dataset/test.json")[["question","sparql_wikidata"]]
 
@@ -11,11 +24,7 @@ data = pd.concat([lcquad_train, lcquad_test], ignore_index=True).dropna()
 nl_questions = data.question.values
 wd_queries = data.sparql_wikidata.values
 
-"""
-    Build the Generator to generate pairs under the form:
-        question :  what is philippine standard geographic code for angeles
-        query :     select distinct var1 where bkt_open wd_qxxx wdt_pxxx var1 bkt_close
-"""
+
 generator = Generator(nl_questions, wd_queries)
 
 train_filename, test_filename = "lcquad_train.csv", "lcquad_test.csv"
@@ -23,27 +32,22 @@ train_filename, test_filename = "lcquad_train.csv", "lcquad_test.csv"
 
 
 """
-    Hyperparameters to train the seq_to_seq_bilstm model
+    Hyperparameters to train the seq_to_seq model
 """
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-num_epochs = 100
+num_epochs = 20
 learning_rate = 1e-3
 batch_size = 16
 max_len = 300
 
 """
-    Build the Learner to get the input and target vocabs
+    Build the Learner
 """
 learner = Learner(train_filename, test_filename,
                   num_epochs, batch_size, learning_rate,
                   max_len, device)
 
-
-
-training = [None,"transformer","bilstm"][2]
-testing = [None,"transformer","bilstm"][2]
-load_model = True
 
 """
     Build & Train the Transformer model
@@ -102,3 +106,14 @@ if testing == "bilstm":
 """
     Build the Interpreter to get the corrected SPARQL query
 """
+english, sparql = learner.get_vocab()
+
+model = Transformer(embedding_size, len(english.vocab), len(sparql.vocab), english.vocab.stoi['<pad>'],
+                    num_heads, enc_nlayers, dec_nlayers, forward_expansion,
+                    dropout, max_len, device).to(device)
+load_checkpoint(torch.load("models/tfmr_chkpt.pth.tar"), model, optim.Adam(model.parameters(), lr=learning_rate))
+
+interpreter = Interpreter(model, english, sparql, device)
+
+print(interpreter.query_from_question("who is the architect for the flatiron building"))
+# Output : SELECT DISTINCT var1 WHERE {wd:QXXX wdt:PXXX var1 . var1 wdt:PXXX wd:QXXX}
