@@ -34,8 +34,8 @@
         </tr>
         <tr>
             <td>BiLSTM w/ attention</td>
-            <td align="right">61.53</td>
-            <td align="right">19.91</td>
+            <td align="right">61.5</td>
+            <td align="right">19.9</td>
         </tr>
     </tbody>
 </table>
