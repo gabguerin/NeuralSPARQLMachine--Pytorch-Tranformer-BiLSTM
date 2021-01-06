@@ -26,7 +26,7 @@
 <table>
     <thead>
         <tr>
-            <th>LC-QuAD2.0</th>
+            <th>Without rel learning</th>
             <th align="center">Accuracy</th>
             <th align="center">BLEU</th>
         </tr>
@@ -44,6 +44,22 @@
         </tr>
     </tbody>
 </table>
-<i>N.B. Since we encode all entities & relations under the same name, the sparql vocab size is small so the BLEU score is impressively high</i>
+
+<table>
+    <thead>
+        <tr>
+            <th>With rel learning</th>
+            <th align="center">Accuracy</th>
+            <th align="center">BLEU</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>Transformer</td>
+            <td align="right">86.6</td>
+            <td align="right">78.2</td>
+        </tr>
+    </tbody>
+</table>
 
 ## 3. Decode data & Entity linking (Interpreter)
