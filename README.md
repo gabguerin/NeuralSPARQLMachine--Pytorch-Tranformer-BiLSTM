@@ -17,7 +17,7 @@
   
 <Generator output w/ relations learning>
       question : what is the issf id of kim rhode
-  sparql_query : select distinct var1 where bkt_open wd_q233759 wdt_p2730 var1 bkt_close
+  sparql_query : select distinct var1 where bkt_open wd_qxxx wdt_p2730 var1 bkt_close
 ```
 
 ## 2. Train & Test seq_to_seq model (Learner)
