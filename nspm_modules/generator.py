@@ -1,6 +1,7 @@
 import pandas as pd
 from sparql_parser.SPARQL_parser import SPARQL
 from sklearn.model_selection import train_test_split
+import spacy
 import re
 
 
@@ -30,9 +31,8 @@ class Generator():
         query = query.replace("}", " bkt_close")
         query = query.replace("(", " par_open ")
         query = query.replace(")", " par_close ")
-        query = query.replace(".", "sep_dot")
+        query = query.replace(" . ", " sep_dot ")
         query = re.sub(":Q[0-9]*","_qxxx", query)
-        query = re.sub(":P[0-9]*","_pxxx", query)
         query = query.replace("  ", " ").lower()
 
         if query[0] == ' ':
@@ -51,8 +51,8 @@ class Generator():
         train_df = pd.DataFrame({"question": src_train, "sparql_query": trg_train})
         test_df = pd.DataFrame({"question": src_test, "sparql_query": trg_test})
 
-        train_df.to_csv(train_filename, index=False)
-        test_df.to_csv(test_filename, index=False)
+        train_df.to_csv("data/train_test_files/" + train_filename, index=False)
+        test_df.to_csv("data/train_test_files/" + test_filename, index=False)
 
 
 

@@ -1,4 +1,5 @@
-from utils import query_prediction
+from utils import query_prediction, get_query_answer, get_label_from_id
+from torchtext.data.utils import get_tokenizer
 import re
 
 
@@ -20,12 +21,15 @@ class Interpreter():
         query = " ".join([w.upper() if w in self.sparql_func else w for w in query.split(' ')])
         query = query.replace("bkt_open ", "{")
         query = query.replace(" bkt_close", "}")
-        query = query.replace(" prts_open ", '(')
-        query = query.replace(" prts_close ", ")")
+        query = query.replace(" par_open ", '(')
+        query = query.replace("par_open", '(')
+        query = query.replace(" par_close ", ")")
+        query = query.replace("par_close ", ")")
         query = query.replace("sep_dot", ".")
         query = query.replace("_", ":")
-        query = query.replace("pxxx", "PXXX")
+        query = query.replace(":p", ":P")
         query = query.replace("qxxx", "QXXX")
+        query = query.replace("var", "?var")
         return query
 
     def clean_txt(self, txt):
@@ -33,7 +37,18 @@ class Interpreter():
         return txt.lower()
 
     def query_from_question(self, question):
-        tokens = self.clean_txt(question).split(' ')
+        tokenizer = get_tokenizer("basic_english")
+        tokens = tokenizer(self.clean_txt(question))
         prediction = query_prediction(self.model, tokens, self.english, self.sparql, self.device)[:-1]
         query = " ".join(prediction)
         return self.decode_query(query)
+
+    def answer(self, question):
+        query = self.query_from_question(question)
+        print(query)
+
+        ans = get_query_answer(query)
+        if ans[:4] == "http":
+            return get_label_from_id(ans.split('/')[-1])
+        return ans
+

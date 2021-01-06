@@ -8,27 +8,32 @@ import pandas as pd
 import torch
 
 
+
+generate_files = False
 training = [None,"transformer","bilstm"][0]
-testing = [None,"transformer","bilstm"][0]
+testing = [None,"transformer","bilstm"][1]
 load_model = True
+train_filename, test_filename = "lcquad_wd_train.csv", "lcquad_wd_test.csv"
+checkpoint_name = "models/tfmr_wd_chkpt.pth.tar"
+
 
 """
     Build the Generator to generate pairs under the form:
         question :  what is philippine standard geographic code for angeles
         query :     select distinct var1 where bkt_open wd_qxxx wdt_pxxx var1 bkt_close
 """
-lcquad_train = pd.read_json("data/LC-QuAD2.0/dataset/train.json")[["question","sparql_wikidata"]]
-lcquad_test = pd.read_json("data/LC-QuAD2.0/dataset/test.json")[["question","sparql_wikidata"]]
 
-data = pd.concat([lcquad_train, lcquad_test], ignore_index=True).dropna()
-nl_questions = data.question.values
-wd_queries = data.sparql_wikidata.values
+if generate_files:
+    lcquad_train = pd.read_json("data/LC-QuAD2.0/dataset/train.json")[["question", "sparql_wikidata"]]
+    lcquad_test = pd.read_json("data/LC-QuAD2.0/dataset/test.json")[["question", "sparql_wikidata"]]
 
+    data = pd.concat([lcquad_train, lcquad_test], ignore_index=True).dropna()
+    nl_questions = data["question"].values
+    spl_queries = data["sparql_wikidata"].values
 
-generator = Generator(nl_questions, wd_queries)
+    generator = Generator(nl_questions, spl_queries)
 
-train_filename, test_filename = "lcquad_train.csv", "lcquad_test.csv"
-#generator.generate_train_test_files(train_filename, test_filename)
+    generator.generate_train_test_files(train_filename, test_filename)
 
 
 """
@@ -36,7 +41,7 @@ train_filename, test_filename = "lcquad_train.csv", "lcquad_test.csv"
 """
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-num_epochs = 20
+num_epochs = 10
 learning_rate = 1e-3
 batch_size = 16
 max_len = 300
@@ -66,7 +71,8 @@ if training == "transformer":
                                     dec_nlayers,
                                     forward_expansion,
                                     dropout,
-                                    load_model)
+                                    load_model,
+                                    checkpoint_name=checkpoint_name)
 
 if testing == "transformer":
     learner.test_transformer_model(embedding_size,
@@ -75,11 +81,13 @@ if testing == "transformer":
                                     dec_nlayers,
                                     forward_expansion,
                                     dropout,
-                                    load_model)
+                                    load_model,
+                                   checkpoint_name=checkpoint_name)
 
 
 """
     Build & Train the BiLSTM model
+"""
 """
 embedding_size = 128
 hidden_size = 64
@@ -88,19 +96,12 @@ enc_dropout = 0.1
 dec_dropout = 0.1
 
 if training == "bilstm":
-    learner.train_bilstm_model(embedding_size,
-                                   hidden_size,
-                                   nlayers,
-                                   dropout,
-                                   load_model)
+    learner.train_bilstm_model(embedding_size, hidden_size, nlayers, dropout, load_model)
 
 if testing == "bilstm":
-    learner.test_bilstm_model(embedding_size,
-                                   hidden_size,
-                                   nlayers,
-                                   dropout,
-                                   load_model)
+    learner.test_bilstm_model(embedding_size, hidden_size, nlayers, dropout, load_model)
 
+"""
 
 
 """
@@ -108,12 +109,26 @@ if testing == "bilstm":
 """
 english, sparql = learner.get_vocab()
 
-model = Transformer(embedding_size, len(english.vocab), len(sparql.vocab), english.vocab.stoi['<pad>'],
-                    num_heads, enc_nlayers, dec_nlayers, forward_expansion,
-                    dropout, max_len, device).to(device)
-load_checkpoint(torch.load("models/tfmr_chkpt.pth.tar"), model, optim.Adam(model.parameters(), lr=learning_rate))
+model = Transformer(embedding_size,
+                    len(english.vocab), len(sparql.vocab), english.vocab.stoi['<pad>'],
+                    num_heads, enc_nlayers, dec_nlayers,
+                    forward_expansion,
+                    dropout,
+                    max_len,
+                    device).to(device)
+load_checkpoint(torch.load(checkpoint_name), model, optim.Adam(model.parameters(), lr=learning_rate))
 
 interpreter = Interpreter(model, english, sparql, device)
 
-print(interpreter.query_from_question("who is the architect for the flatiron building"))
-# Output : SELECT DISTINCT var1 WHERE {wd:QXXX wdt:PXXX var1 . var1 wdt:PXXX wd:QXXX}
+questions = ["what award did Bob Cousy receive in 1961 ?",
+             "what is the sexual orientation and the gender of Ricky Martin ?",
+             "Which is the institution that contains the word roman in their name ?",
+             "Do the points for Chris Harper equal 10 ?",
+             "What nba team starts with the letter D ?",
+             "When did the father of Leonardo Da Vinci die ?"]
+
+for question in questions:
+    print("<Interpreter input>")
+    print(question)
+    print("<Interpreter output>")
+    print(interpreter.query_from_question(question))

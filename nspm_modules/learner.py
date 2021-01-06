@@ -32,8 +32,8 @@ class Learner():
 
         self.train_data, self.test_data = TabularDataset.splits(
             path='',
-            train=train_filename,
-            test=test_filename,
+            train="data/train_test_files/" + train_filename,
+            test="data/train_test_files/" + test_filename,
             format='csv',
             skip_header=True,
             fields=fields
@@ -66,7 +66,7 @@ class Learner():
                                 forward_expansion,
                                 dropout,
                                 load_model, save_model=True,
-                                checkpoint_name="models/tfmr_chkpt.pth.tar"):
+                                checkpoint_name="models/tfmr_wd_chkpt.pth.tar"):
 
         print("\nTraining Transformer model...\n")
         model = Transformer(embedding_size, self.src_vocab_size, self.trg_vocab_size, self.src_pad_idx,
