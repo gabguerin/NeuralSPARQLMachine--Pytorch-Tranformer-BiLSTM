@@ -57,3 +57,35 @@ def bleu(data, model, english, sparql, device):
 
     return bleu_score(outputs, targets), acc / len(data)
 
+
+from SPARQLWrapper import SPARQLWrapper, JSON
+import urllib
+from bs4 import BeautifulSoup
+import json
+
+def get_query_answer(queryString):
+    sparql = SPARQLWrapper("http://query.wikidata.org/sparql",
+                           agent="answering-complex-questions 0.1 (github.com/D2KLab/AnsweringComplexQuestions)")
+    sparql.setQuery(queryString)
+    sparql.setReturnFormat(JSON)
+    #print(sparql)
+    results = sparql.query().convert()
+    #print(results)
+    if 'results' in results.keys() and len((results['results']['bindings'])) > 0:
+        results_df = pd.io.json.json_normalize(results['results']['bindings'])
+        col_value = results_df.columns[-1]
+        return results_df[col_value][0]
+    elif 'boolean' in results.keys():
+        return results['boolean']
+    return 'Not Found'
+
+
+def get_label_from_id(entity):
+    response = urllib.request.urlopen("http://www.wikidata.org/entity/"+entity)
+    html_doc = response.read()
+    soup = BeautifulSoup(html_doc, 'html.parser')
+    data = json.loads(str(soup))
+    label = data["entities"][entity]['labels']['en']['value']
+    if label.endswith("T00:00:00Z"):
+        return label.split('T00:00:00Z')[0]
+    return label
