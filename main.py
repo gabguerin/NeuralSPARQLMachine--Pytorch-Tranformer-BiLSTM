@@ -59,8 +59,8 @@ learner = Learner(train_filename, test_filename,
 """
 embedding_size = 512
 num_heads = 8
-enc_nlayers = 4
-dec_nlayers = 4
+enc_nlayers = 3
+dec_nlayers = 3
 dropout = 0.1
 forward_expansion = 4
 
