@@ -57,7 +57,7 @@ learner = Learner(train_filename, test_filename,
 """
     Build & Train the Transformer model
 """
-embedding_size = 1024
+embedding_size = 512
 num_heads = 8
 enc_nlayers = 4
 dec_nlayers = 4
