@@ -116,6 +116,10 @@ class Learner():
             scheduler.step(mean_loss)
 
             print(f"[epoch: {epoch+1}/{self.num_epochs} | loss: {mean_loss}] elapsed: {(time()-t0)//60} min")
+            
+            if (epoch+1) % 10 == 0:
+                bleu_score, acc = bleu(self.test_data[1:100], model, self.english, self.sparql, self.device)
+                print(f"Bleu score: {bleu_score * 100:.2f} | Accuracy: {acc * 100:.2f}")
 
 
     def test_transformer_model(self,
