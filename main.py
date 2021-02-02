@@ -12,7 +12,7 @@ import torch
 generate_files = False
 training = [None,"transformer","bilstm"][1]
 testing = [None,"transformer","bilstm"][1]
-load_model = True
+load_model = False
 train_filename, test_filename = "lcquad_wd_train.csv", "lcquad_wd_test.csv"
 checkpoint_name = "models/tfmr_wd_chkpt.pth.tar"
 
