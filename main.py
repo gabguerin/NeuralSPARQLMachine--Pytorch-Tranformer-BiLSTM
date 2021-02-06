@@ -42,7 +42,7 @@ if generate_files:
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 num_epochs = 200
-learning_rate = 1
+learning_rate = 1e-2
 batch_size = 16
 max_len = 300
 
